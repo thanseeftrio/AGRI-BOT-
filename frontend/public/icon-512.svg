@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1c1c1f"/>
+      <stop offset="100%" stop-color="#09090b"/>
+    </linearGradient>
+    <linearGradient id="leafGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34d399"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#d97706"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="128" fill="url(#bgGrad)"/>
+  <circle cx="256" cy="256" r="230" stroke="rgba(255,255,255,0.08)" stroke-width="4" fill="none"/>
+  <!-- Central Sprout / Plant Icon -->
+  <path d="M256 380 V 220" stroke="url(#leafGrad)" stroke-width="24" stroke-linecap="round"/>
+  <path d="M256 280 C 210 240 160 260 150 210 C 210 200 240 240 256 280 Z" fill="url(#leafGrad)"/>
+  <path d="M256 240 C 302 200 352 220 362 170 C 302 160 272 200 256 240 Z" fill="url(#leafGrad)"/>
+  <!-- Golden AI Sparkles -->
+  <path d="M370 110 L380 135 L405 145 L380 155 L370 180 L360 155 L335 145 L360 135 Z" fill="url(#goldGrad)"/>
+  <path d="M140 150 L146 165 L161 171 L146 177 L140 192 L134 177 L119 171 L134 165 Z" fill="url(#goldGrad)"/>
+</svg>
