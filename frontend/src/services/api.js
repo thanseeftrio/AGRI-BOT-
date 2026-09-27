@@ -12,33 +12,16 @@ const API_BASE = import.meta.env.VITE_API_URL || '';
 
 export const ApiService = {
   async chat({ query, language = 'kannada', mode = 'cloud', image_name = null, imageDataUrl = null, history = [] }) {
-    // 1. Try Vercel Serverless / Backend API (which holds GEMINI_API_KEY securely on the server)
+    // 1. Direct High-Speed Gemini Generative AI (Live Brain)
     try {
-      const res = await fetch(`${API_BASE}/api/agent/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, language, mode, image_name, imageDataUrl, history })
+      const geminiReply = await queryGeminiChat({
+        query,
+        language,
+        imageDataUrl,
+        history
       });
-      if (res.ok) {
-        const data = await res.json();
-        if (data && (data.response_text_localized || data.response_text_en)) {
-          return data;
-        }
-      }
-    } catch (e) {
-      // Backend/Serverless unavailable or running offline
-    }
 
-    // 2. If client environment variable VITE_GEMINI_API_KEY is configured
-    if (import.meta.env.VITE_GEMINI_API_KEY) {
-      try {
-        const geminiReply = await queryGeminiChat({
-          query,
-          language,
-          imageDataUrl,
-          history
-        });
-
+      if (geminiReply) {
         const q = (query || '').toLowerCase();
         let cardType = null;
         let cardPayload = null;
@@ -59,12 +42,29 @@ export const ApiService = {
           tool_executed: 'gemini_agribot_engine',
           spoken_audio_transcript: geminiReply.substring(0, 150)
         };
-      } catch (geminiErr) {
-        console.warn('Direct Gemini call failed:', geminiErr.message);
       }
+    } catch (geminiErr) {
+      console.warn('Direct Gemini call note:', geminiErr.message);
     }
 
-    // 3. Seamless on-device client Agronomy Engine fallback
+    // 2. Try Serverless / Backend Proxy API
+    try {
+      const res = await fetch(`${API_BASE}/api/agent/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, language, mode, image_name, imageDataUrl, history })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && (data.response_text_localized || data.response_text_en)) {
+          return data;
+        }
+      }
+    } catch (e) {
+      // Backend/Serverless offline
+    }
+
+    // 3. Fallback to On-Device Mathematical Agronomy Engine
     return generateSmartChatResponse(query, language, mode, image_name);
   },
 

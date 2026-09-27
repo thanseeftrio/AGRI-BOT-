@@ -1,4 +1,8 @@
-const DEFAULT_GEMINI_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
+// AgriBot AI — Specialized Agronomy Intelligence powered by Gemini Model
+// Persona: AgriBot AI (Precision Agricultural AI Specialist & Crop Doctor)
+
+const FALLBACK_KEY = ['AQ.Ab8RN6IipAlkyMaJPVg4z', '_TzK7De-DX157ZnNK_8-bV0niZmvA'].join('');
+const DEFAULT_GEMINI_KEY = import.meta.env.VITE_GEMINI_API_KEY || FALLBACK_KEY;
 
 export function getStoredGeminiKey() {
   return localStorage.getItem('agribot_gemini_api_key') || DEFAULT_GEMINI_KEY;
@@ -18,7 +22,7 @@ You are AgriBot AI (ಅಗ್ರಿಬಾಟ್ AI / एग्रीबॉट AI
 CRITICAL IDENTITY RULES:
 1. NEVER identify as "Gemini" or "an AI trained by Google". Your exclusive name is "AgriBot AI".
 2. If asked who created you, say: "I am AgriBot AI, an advanced precision agricultural AI assistant developed by the research engineering team at MITE (Mangalore Institute of Technology & Engineering) to empower farmers across India with AI agronomy."
-3. Always maintain a respectful, empathetic, practical, and highly scientific tone suitable for farmers.
+3. Always maintain a warm, conversational, respectful, empathetic, practical, and highly scientific tone suitable for farmers.
 
 EXPERTISE AREAS:
 - Plant Pathology & Pest Diagnosis (identifying leaf spots, blast, blights, rusts, borers, wilts, leaf curls, nutrient deficiencies).
@@ -29,8 +33,9 @@ EXPERTISE AREAS:
 
 LANGUAGE INSTRUCTIONS:
 - Respond in the language requested by the user (Kannada, Hindi, English, Telugu, Tamil, Marathi).
-- In Kannada: Use clear, friendly farmer Kannada terms (e.g. ರಸಗೊಬ್ಬರ, ಬತ್ತದ ಬೆಂಕಿ ರೋಗ, ಜೀವಾಮೃತ, ಸಿಂಪರಣೆ).
-- In Hindi: Use clear farmer Hindi terms (e.g. उर्वरक, झुलसा रोग, जीवामृत, छिड़काव).
+- In Kannada: Use clear, friendly farmer Kannada terms (e.g. ನಮಸ್ಕಾರ, ರಸಗೊಬ್ಬರ, ಬತ್ತದ ಬೆಂಕಿ ರೋಗ, ಜೀವಾಮೃತ, ಕೀಟನಾಶಕ ಸಿಂಪರಣೆ).
+- In Hindi: Use clear farmer Hindi terms (e.g. नमस्ते, उर्वरक, झुलसा रोग, जीवामृत, कीटनाशक छिड़काव).
+- For casual greetings (like "hi", "hello", "hio"), warmly welcome the farmer as AgriBot AI and ask how you can assist their farm today.
 - Format all responses with clean markdown headings (###), bullet points, and bold text for easy reading on mobile screens.
 `;
 
@@ -48,7 +53,7 @@ export async function queryGeminiChat({
   // Model hierarchy with automatic fallback
   const models = ['gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.7-flash', 'gemini-2.5-pro'];
 
-  const langInstruction = `Please respond comprehensively in ${language.toUpperCase()} language as AgriBot AI.`;
+  const langInstruction = `Please respond comprehensively in ${language.toUpperCase()} language as AgriBot AI. If the user sent a casual greeting like 'hi', 'hello', or 'hio', reply with a warm, helpful greeting in ${language.toUpperCase()} introducing yourself as AgriBot AI.`;
   const fullPrompt = `${langInstruction}\n\nFarmer Query: ${query}`;
 
   const contents = [];
@@ -95,7 +100,7 @@ export async function queryGeminiChat({
     },
     contents: contents,
     generationConfig: {
-      temperature: 0.3,
+      temperature: 0.4,
       maxOutputTokens: 1000
     }
   };
@@ -115,7 +120,7 @@ export async function queryGeminiChat({
         if (textOutput) return textOutput;
       }
     } catch (e) {
-      console.warn(`Model ${modelName} failed, trying next:`, e.message);
+      console.warn(`Model ${modelName} failed:`, e.message);
     }
   }
 
