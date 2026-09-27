@@ -458,10 +458,6 @@ export function App() {
               <h1 className="text-base font-black text-stone-900 tracking-tight">
                 AgriBot AI
               </h1>
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Powered by Gemini AI
-              </span>
             </div>
             <p className="text-[11px] text-stone-500 font-medium">
               Conversational Agricultural Intelligence & Precision Diagnostics
@@ -534,12 +530,6 @@ export function App() {
 
         {/* Controls: Language, Mode, Download APK, Install App */}
         <div className="flex items-center gap-2">
-          {/* AgriBot AI Status Badge */}
-          <div className="hidden sm:inline-flex items-center gap-1.5 py-1.5 px-3 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200/80 shadow-2xs">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>AgriBot AI Online</span>
-          </div>
-
           {/* Direct Download APK Button (Mobile & Desktop) */}
           <a
             href="/AgriBot-AI-v2.0.apk"
