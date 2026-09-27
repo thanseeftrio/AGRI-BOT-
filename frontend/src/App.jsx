@@ -460,7 +460,7 @@ export function App() {
               </h1>
               <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                {agentMode === 'cloud' ? 'Cloud GPT-4o' : 'Offline Edge'}
+                Powered by Gemini AI
               </span>
             </div>
             <p className="text-[11px] text-stone-500 font-medium">
@@ -577,15 +577,6 @@ export function App() {
               <option value="marathi">मराठी (Marathi)</option>
             </select>
           </div>
-
-          {/* Cloud / Edge Switcher */}
-          <button
-            onClick={() => setAgentMode(agentMode === 'cloud' ? 'edge' : 'cloud')}
-            className="p-2 rounded-full bg-white hover:bg-stone-100 text-stone-700 border border-stone-200 shadow-xs transition-colors"
-            title="Toggle Cloud AI vs Offline Edge Mode"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isProcessing ? 'animate-spin text-emerald-600' : 'text-stone-600'}`} />
-          </button>
         </div>
       </header>
 
