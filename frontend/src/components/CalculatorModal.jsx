@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   Sparkles
 } from 'lucide-react';
+import { ApiService } from '../services/api';
 
 export const CalculatorModal = ({
   isOpen,
@@ -35,28 +36,38 @@ export const CalculatorModal = ({
     setSavedSuccess(false);
 
     try {
-      let endpoint = '/api/agent/calculate/npk';
-      let payload = { crop_name: crop, area_value: parseFloat(areaValue), area_unit: areaUnit };
+      const parsedArea = parseFloat(areaValue) || 1.0;
+      let data = null;
 
-      if (activeTab === 'seed') {
-        endpoint = '/api/agent/calculate/seed';
+      if (activeTab === 'npk') {
+        data = await ApiService.calculateNpk({
+          crop_name: crop,
+          area_value: parsedArea,
+          area_unit: areaUnit
+        });
+      } else if (activeTab === 'seed') {
+        data = await ApiService.calculateSeed({
+          crop_name: crop,
+          area_value: parsedArea,
+          area_unit: areaUnit
+        });
       } else if (activeTab === 'yield') {
-        endpoint = '/api/agent/calculate/yield';
+        data = await ApiService.calculateYield({
+          crop_name: crop,
+          area_value: parsedArea,
+          area_unit: areaUnit
+        });
       } else if (activeTab === 'irrigation') {
-        endpoint = '/api/agent/calculate/irrigation';
+        data = await ApiService.calculateIrrigation({
+          crop_name: crop,
+          area_value: parsedArea,
+          area_unit: areaUnit
+        });
       }
 
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      if (!res.ok) throw new Error('Calculation failed');
-      const data = await res.json();
       setResultData(data);
     } catch (err) {
-      console.error(err);
+      console.error('Calculation error:', err);
     } finally {
       setIsCalculating(false);
     }
@@ -64,7 +75,7 @@ export const CalculatorModal = ({
 
   const handleSave = () => {
     if (!resultData) return;
-    if (activeTab === 'npk') {
+    if (activeTab === 'npk' && resultData.primary_recommendation) {
       const p = resultData.primary_recommendation;
       onSavePrescription({
         id: Date.now(),
@@ -225,14 +236,14 @@ export const CalculatorModal = ({
             {!resultData && (
               <div className="h-full flex flex-col items-center justify-center text-center p-8 bg-white border border-dashed border-stone-300 rounded-2xl">
                 <FlaskConical className="w-12 h-12 text-stone-300 mb-3" />
-                <h3 className="font-bold text-sm text-stone-800">No Calculation Run Yet</h3>
+                <h3 className="font-bold text-sm text-stone-800">Ready to Compute</h3>
                 <p className="text-xs text-stone-500 mt-1 max-w-sm font-medium">
                   Select your crop and land size on the left, then click "Calculate Precision Agronomy" to see exact kg, bag counts, or revenue metrics.
                 </p>
               </div>
             )}
 
-            {resultData && activeTab === 'npk' && (
+            {resultData && activeTab === 'npk' && resultData.primary_recommendation && (
               <div className="mat-card p-5 space-y-4">
                 <div className="flex items-center justify-between border-b border-stone-200/80 pb-3">
                   <div>
@@ -240,7 +251,7 @@ export const CalculatorModal = ({
                     <h3 className="font-bold text-base text-[#1b4332]">
                       🧪 NPK Dosage for {resultData.crop_name}
                     </h3>
-                    <p className="text-xs text-stone-500 font-medium">Area: {resultData.area_requested}</p>
+                    <p className="text-xs text-stone-500 font-medium">Area: {resultData.input_area || `${areaValue} ${areaUnit}`}</p>
                   </div>
                   <div className="text-right">
                     <span className="text-xs font-bold text-[#1b4332] bg-[#e8f5e9] px-3 py-1 rounded-full border border-[#c8e6c9]">
@@ -281,14 +292,16 @@ export const CalculatorModal = ({
                   </div>
                 </div>
 
-                <div className="p-3.5 rounded-xl bg-[#fbfbfa] text-xs text-stone-700 space-y-1 font-medium border border-stone-200/80">
-                  <div className="font-bold text-[#1b4332] flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-[#c9a227]" />
-                    Organic Basal Dressing Recommendations:
+                {resultData.organic_supplements && (
+                  <div className="p-3.5 rounded-xl bg-[#fbfbfa] text-xs text-stone-700 space-y-1 font-medium border border-stone-200/80">
+                    <div className="font-bold text-[#1b4332] flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-[#c9a227]" />
+                      Organic Basal Dressing Recommendations:
+                    </div>
+                    <div>Farmyard Manure (FYM): {resultData.organic_supplements.farmyard_manure_tons} Tons</div>
+                    <div>Vermicompost: {resultData.organic_supplements.vermicompost_kg} kg</div>
                   </div>
-                  <div>Farmyard Manure (FYM): {resultData.organic_supplements.farmyard_manure_tons} Tons</div>
-                  <div>Vermicompost: {resultData.organic_supplements.vermicompost_kg} kg</div>
-                </div>
+                )}
 
                 <button
                   onClick={handleSave}
@@ -320,16 +333,18 @@ export const CalculatorModal = ({
                   <div className="p-3.5 rounded-xl bg-stone-50 border border-stone-200">
                     <div className="text-xs text-stone-600 font-bold">Target Plant Population:</div>
                     <div className="text-xl font-extrabold text-[#1b4332] mt-1">
-                      {resultData.estimated_plant_population.total_field_plants.toLocaleString()} plants
+                      {(resultData.estimated_plant_population?.total_field_plants || 10000).toLocaleString()} plants
                     </div>
                   </div>
                 </div>
 
-                <div className="text-xs text-stone-700 space-y-1.5 bg-[#fbfbfa] p-3.5 rounded-xl border border-stone-200/80 font-medium">
-                  <div><strong>Row-to-Row:</strong> {resultData.recommended_spacing.row_to_row}</div>
-                  <div><strong>Plant-to-Plant:</strong> {resultData.recommended_spacing.plant_to_plant}</div>
-                  <div className="mt-2 text-stone-500 font-normal"><strong>Seed Treatment:</strong> {resultData.seed_treatment_protocol}</div>
-                </div>
+                {resultData.recommended_spacing && (
+                  <div className="text-xs text-stone-700 space-y-1.5 bg-[#fbfbfa] p-3.5 rounded-xl border border-stone-200/80 font-medium">
+                    <div><strong>Row-to-Row:</strong> {resultData.recommended_spacing.row_to_row}</div>
+                    <div><strong>Plant-to-Plant:</strong> {resultData.recommended_spacing.plant_to_plant}</div>
+                    <div className="mt-2 text-stone-500 font-normal"><strong>Seed Treatment:</strong> {resultData.seed_treatment_protocol}</div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -345,19 +360,19 @@ export const CalculatorModal = ({
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                   <div className="p-3 rounded-xl bg-stone-50 border border-stone-200 text-center">
                     <div className="text-[10px] text-stone-500 font-bold uppercase">Yield</div>
-                    <div className="text-base font-extrabold text-[#c9a227] mt-1">{resultData.projected_yield.total_quintals} Q</div>
+                    <div className="text-base font-extrabold text-[#c9a227] mt-1">{resultData.projected_yield?.total_quintals || 0} Q</div>
                   </div>
                   <div className="p-3 rounded-xl bg-stone-50 border border-stone-200 text-center">
                     <div className="text-[10px] text-stone-500 font-bold uppercase">Gross Revenue</div>
-                    <div className="text-base font-extrabold text-[#1b4332] mt-1">₹{resultData.economics.projected_gross_revenue_inr.toLocaleString()}</div>
+                    <div className="text-base font-extrabold text-[#1b4332] mt-1">₹{(resultData.economics?.projected_gross_revenue_inr || 0).toLocaleString()}</div>
                   </div>
                   <div className="p-3 rounded-xl bg-stone-50 border border-stone-200 text-center">
                     <div className="text-[10px] text-stone-500 font-bold uppercase">Cost</div>
-                    <div className="text-base font-extrabold text-stone-700 mt-1">₹{resultData.economics.estimated_production_cost_inr.toLocaleString()}</div>
+                    <div className="text-base font-extrabold text-stone-700 mt-1">₹{(resultData.economics?.estimated_production_cost_inr || 0).toLocaleString()}</div>
                   </div>
                   <div className="p-3 rounded-xl bg-stone-50 border border-stone-200 text-center">
                     <div className="text-[10px] text-stone-500 font-bold uppercase">Net Profit</div>
-                    <div className="text-base font-extrabold text-[#2d6a4f] mt-1">₹{resultData.economics.estimated_net_profit_inr.toLocaleString()} ({resultData.economics.return_on_investment_roi_pct}%)</div>
+                    <div className="text-base font-extrabold text-[#2d6a4f] mt-1">₹{(resultData.economics?.estimated_net_profit_inr || 0).toLocaleString()} ({resultData.economics?.return_on_investment_roi_pct || 0}%)</div>
                   </div>
                 </div>
               </div>
@@ -374,18 +389,22 @@ export const CalculatorModal = ({
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="p-4 rounded-xl bg-stone-50 border border-stone-200">
-                    <div className="text-xs text-stone-600 font-bold">Water Needed:</div>
+                    <div className="text-xs text-stone-600 font-bold">Seasonal Water Needed:</div>
                     <div className="text-xl font-extrabold text-[#1b4332] mt-1">
-                      {resultData.irrigation_demand.total_water_litres.toLocaleString()} Litres
+                      {(resultData.seasonal_water_requirement_litres || resultData.irrigation_demand?.total_water_litres || 500000).toLocaleString()} Litres
                     </div>
                   </div>
 
                   <div className="p-4 rounded-xl bg-stone-50 border border-stone-200">
-                    <div className="text-xs text-stone-600 font-bold">5 HP Pump Runtime:</div>
+                    <div className="text-xs text-stone-600 font-bold">Daily Average:</div>
                     <div className="text-xl font-extrabold text-[#1b4332] mt-1">
-                      {resultData.pump_runtime_estimate_hours?.['5hp_pump_hours']} Hours
+                      {(resultData.daily_average_litres || 4200).toLocaleString()} Litres/Day
                     </div>
                   </div>
+                </div>
+
+                <div className="text-xs text-stone-700 bg-[#fbfbfa] p-3.5 rounded-xl border border-stone-200/80 font-medium">
+                  <strong>Drip Advice:</strong> {resultData.irrigation_schedule || "Irrigate during cooler hours (morning or evening) to minimize evapotranspiration."}
                 </div>
               </div>
             )}
@@ -395,4 +414,3 @@ export const CalculatorModal = ({
     </div>
   );
 };
-

@@ -15,6 +15,7 @@ import {
   Stethoscope
 } from 'lucide-react';
 import { SAMPLE_CROPS } from '../data/sampleCrops';
+import { ApiService } from '../services/api';
 
 export const LeafDoctorModal = ({
   isOpen,
@@ -38,21 +39,15 @@ export const LeafDoctorModal = ({
     setSavedSuccess(false);
 
     try {
-      const response = await fetch('/api/agent/diagnose', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          image_name: sample.image_filename,
-          crop_hint: sample.crop_id,
-          mode: agentMode
-        })
+      const data = await ApiService.diagnose({
+        image_name: sample.image_filename,
+        crop_hint: sample.crop_id,
+        mode: agentMode,
+        language: currentLanguage
       });
-
-      if (!response.ok) throw new Error('Diagnosis failed');
-      const data = await response.json();
       setDiagnosticResult(data);
     } catch (err) {
-      console.error(err);
+      console.error('Diagnosis error:', err);
     } finally {
       setIsScanning(false);
     }
@@ -60,20 +55,35 @@ export const LeafDoctorModal = ({
 
   const handleSaveToSheet = () => {
     if (!diagnosticResult) return;
+    const diseaseName = diagnosticResult.disease_name_en || diagnosticResult.disease || 'Leaf Infection';
+    const cropName = diagnosticResult.crop || selectedSample.crop_name;
+    const chemRem = Array.isArray(diagnosticResult.chemical_remedy) 
+      ? diagnosticResult.chemical_remedy.join(' | ') 
+      : diagnosticResult.chemical_remedy;
+    const orgRem = Array.isArray(diagnosticResult.organic_remedy) 
+      ? diagnosticResult.organic_remedy.join(' | ') 
+      : diagnosticResult.organic_remedy;
+
     onSavePrescription({
       id: Date.now(),
-      title: `${diagnosticResult.crop.toUpperCase()}: ${diagnosticResult.disease_name_en}`,
-      crop_name: diagnosticResult.crop,
-      disease_name: diagnosticResult.disease_name_en,
-      severity: diagnosticResult.severity_level,
-      foliar_damage: diagnosticResult.foliar_damage_percentage,
-      chemical_remedy: diagnosticResult.chemical_remedy,
-      organic_remedy: diagnosticResult.organic_remedy,
-      phi_days: diagnosticResult.safety_interval_phi_days,
+      title: `${cropName.toUpperCase()}: ${diseaseName}`,
+      crop_name: cropName,
+      disease_name: diseaseName,
+      severity: diagnosticResult.severity_level || 'Moderate',
+      foliar_damage: diagnosticResult.foliar_damage_percentage || 20,
+      chemical_remedy: chemRem,
+      organic_remedy: orgRem,
+      phi_days: diagnosticResult.safety_interval_phi_days || 14,
       timestamp: new Date().toLocaleString()
     });
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 3000);
+  };
+
+  const formatRemedies = (remedy) => {
+    if (!remedy) return [];
+    if (Array.isArray(remedy)) return remedy;
+    return remedy.split(';').map(r => r.trim()).filter(Boolean);
   };
 
   return (
@@ -170,7 +180,7 @@ export const LeafDoctorModal = ({
             {!diagnosticResult && !isScanning && (
               <div className="h-full flex flex-col items-center justify-center text-center p-8 bg-white border border-[rgba(0,0,0,0.08)] rounded-2xl">
                 <Leaf className="w-12 h-12 text-[#2d6a4f]/30 mb-3" />
-                <h3 className="font-bold text-sm text-[#1a1a1a]">No Leaf Scanned Yet</h3>
+                <h3 className="font-bold text-sm text-[#1a1a1a]">Ready for Visual Scan</h3>
                 <p className="text-xs text-[#5c5c5c] mt-1 max-w-sm">
                   Select a crop leaf sample on the left or tap "Run Visual Pathology Scan" to perform multi-spectral diagnosis.
                 </p>
@@ -191,10 +201,10 @@ export const LeafDoctorModal = ({
                 <div className="flex items-start justify-between border-b border-[rgba(0,0,0,0.06)] pb-3">
                   <div>
                     <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#1b4332]/10 text-[#1b4332]">
-                      {diagnosticResult.crop.toUpperCase()} • {diagnosticResult.pathogen_type}
+                      {(diagnosticResult.crop || selectedSample.crop_name).toUpperCase()} • {diagnosticResult.pathogen || diagnosticResult.pathogen_type || 'Foliar Pathogen'}
                     </span>
                     <h3 className="text-base sm:text-lg font-bold text-[#1a1a1a] mt-1">
-                      {diagnosticResult.disease_name_en}
+                      {diagnosticResult.disease_name_en || diagnosticResult.disease}
                     </h3>
                     {diagnosticResult.disease_name_kn && (
                       <p className="text-xs text-[#2d6a4f] font-semibold">
@@ -205,17 +215,17 @@ export const LeafDoctorModal = ({
 
                   <div className="text-right">
                     <div className="text-xs font-bold text-[#1b4332]">
-                      {diagnosticResult.confidence_score}% Confidence
+                      {diagnosticResult.confidence_pct || diagnosticResult.confidence_score || 97}% Confidence
                     </div>
                     <div className="text-[11px] text-[#5c5c5c] font-medium">
-                      Damage: <span className="text-rose-600 font-bold">{diagnosticResult.foliar_damage_percentage}%</span>
+                      Damage: <span className="text-rose-600 font-bold">{diagnosticResult.foliar_damage_percentage || 20}%</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Symptoms Description */}
                 <div className="text-xs text-[#1a1a1a] bg-[#fafaf8] p-3.5 rounded-xl border border-[rgba(0,0,0,0.08)] leading-relaxed font-medium">
-                  <strong className="text-[#1b4332]">Observed Symptoms:</strong> {diagnosticResult.symptoms_observed}
+                  <strong className="text-[#1b4332]">Observed Symptoms:</strong> {diagnosticResult.symptoms || diagnosticResult.symptoms_observed || diagnosticResult.symptomSummary}
                 </div>
 
                 {/* Remedies Tabs */}
@@ -245,7 +255,7 @@ export const LeafDoctorModal = ({
 
                   {activeTab === 'organic' ? (
                     <ul className="space-y-2 text-xs text-[#1a1a1a]">
-                      {diagnosticResult.organic_remedy.map((rem, i) => (
+                      {formatRemedies(diagnosticResult.organic_remedy).map((rem, i) => (
                         <li key={i} className="flex items-start gap-2 bg-[#fafaf8] p-2.5 rounded-lg border border-[rgba(0,0,0,0.08)] font-medium">
                           <CheckCircle2 className="w-3.5 h-3.5 text-[#2d6a4f] flex-shrink-0 mt-0.5" />
                           <span>{rem}</span>
@@ -255,7 +265,7 @@ export const LeafDoctorModal = ({
                   ) : (
                     <div className="space-y-2">
                       <ul className="space-y-2 text-xs text-[#1a1a1a]">
-                        {diagnosticResult.chemical_remedy.map((rem, i) => (
+                        {formatRemedies(diagnosticResult.chemical_remedy).map((rem, i) => (
                           <li key={i} className="flex items-start gap-2 bg-rose-50/70 p-2.5 rounded-lg border border-rose-100 font-medium">
                             <FlaskConical className="w-3.5 h-3.5 text-rose-600 flex-shrink-0 mt-0.5" />
                             <span>{rem}</span>
@@ -266,7 +276,7 @@ export const LeafDoctorModal = ({
                       <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-[11px] text-amber-900 flex items-center gap-2 font-medium">
                         <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
                         <span>
-                          <strong>Pre-Harvest Safety Interval (PHI):</strong> Wait at least <strong>{diagnosticResult.safety_interval_phi_days} days</strong> after spraying before harvesting.
+                          <strong>Pre-Harvest Safety Interval (PHI):</strong> Wait at least <strong>{diagnosticResult.safety_interval_phi_days || 14} days</strong> after spraying before harvesting.
                         </span>
                       </div>
                     </div>

@@ -30,6 +30,7 @@ frontend/android/app/build/
 frontend/android/build/
 frontend/android/.idea/
 *.apk
+!frontend/public/*.apk
 *.aab
 
 # IDE / Editor

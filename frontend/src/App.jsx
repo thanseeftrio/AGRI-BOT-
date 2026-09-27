@@ -48,6 +48,7 @@ import { SAMPLE_CROPS, SAMPLE_DIAGNOSTICS, CROPS_LIST } from './data/sampleCrops
 import { PrescriptionModal } from './components/PrescriptionModal';
 import { LeafDoctorModal } from './components/LeafDoctorModal';
 import { CalculatorModal } from './components/CalculatorModal';
+import { ApiService } from './services/api';
 
 export function App() {
   const [currentLanguage, setLanguage] = useState(() => {
@@ -219,23 +220,14 @@ export function App() {
     setIsProcessing(true);
 
     try {
-      const response = await fetch('/api/agent/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          query: queryText,
-          language: currentLanguage,
-          mode: agentMode,
-          image_name: queryImage
-        })
+      const data = await ApiService.chat({
+        query: queryText,
+        language: currentLanguage,
+        mode: agentMode,
+        image_name: queryImage
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error ${response.status}`);
-      }
-
-      const data = await response.json();
-      const botReplyText = data.response_text_localized || data.response_text_en;
+      const botReplyText = data.response_text_localized || data.response_text_en || data.text;
 
       const botMsg = {
         id: Date.now() + 1,
@@ -253,17 +245,7 @@ export function App() {
         [currentSessionId]: [...(prev[currentSessionId] || []), botMsg]
       }));
     } catch (err) {
-      console.error(err);
-      const fallbackMsg = {
-        id: Date.now() + 1,
-        sender: 'bot',
-        text: `AgriBot response: Processed "${queryText}" using on-device agronomy engine.`,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      };
-      setSessionMessages((prev) => ({
-        ...prev,
-        [currentSessionId]: [...(prev[currentSessionId] || []), fallbackMsg]
-      }));
+      console.error('Chat error:', err);
     } finally {
       setIsProcessing(false);
     }
@@ -381,26 +363,38 @@ export function App() {
     setCalcResult(null);
 
     try {
-      let endpoint = '/api/agent/calculate/npk';
-      if (calcTab === 'seed') endpoint = '/api/agent/calculate/seed';
-      else if (calcTab === 'yield') endpoint = '/api/agent/calculate/yield';
-      else if (calcTab === 'irrigation') endpoint = '/api/agent/calculate/irrigation';
+      const parsedArea = parseFloat(calcArea) || 1.0;
+      let data = null;
 
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      if (calcTab === 'npk') {
+        data = await ApiService.calculateNpk({
           crop_name: calcCrop,
-          area_value: parseFloat(calcArea),
+          area_value: parsedArea,
           area_unit: calcUnit
-        })
-      });
+        });
+      } else if (calcTab === 'seed') {
+        data = await ApiService.calculateSeed({
+          crop_name: calcCrop,
+          area_value: parsedArea,
+          area_unit: calcUnit
+        });
+      } else if (calcTab === 'yield') {
+        data = await ApiService.calculateYield({
+          crop_name: calcCrop,
+          area_value: parsedArea,
+          area_unit: calcUnit
+        });
+      } else if (calcTab === 'irrigation') {
+        data = await ApiService.calculateIrrigation({
+          crop_name: calcCrop,
+          area_value: parsedArea,
+          area_unit: calcUnit
+        });
+      }
 
-      if (!res.ok) throw new Error('Calculation failed');
-      const data = await res.json();
       setCalcResult(data);
     } catch (err) {
-      console.error(err);
+      console.error('Calculation error:', err);
     } finally {
       setIsCalcLoading(false);
     }
@@ -1538,22 +1532,37 @@ export function App() {
               </div>
             </div>
 
-            <div className="flex gap-2">
-              <a
-                href="/api/download/apk"
-                download="AgriBot-AI-v2.0.apk"
-                className="flex-1 py-3 rounded-full ios-btn-black text-white text-xs font-bold flex items-center justify-center gap-2 shadow-md active:scale-95 transition-all text-center"
-              >
-                <Download className="w-4 h-4 text-emerald-400" />
-                <span>Download APK File</span>
-              </a>
+            <div className="flex flex-col gap-2">
+              {deferredPrompt && (
+                <button
+                  onClick={() => {
+                    handleInstallApp();
+                    setIsInstallModalOpen(false);
+                  }}
+                  className="w-full py-3 rounded-full mat-btn-primary text-white text-xs font-bold flex items-center justify-center gap-2 shadow-md active:scale-95 transition-all text-center"
+                >
+                  <Sparkles className="w-4 h-4 text-[#c9a227]" />
+                  <span>Install App to This Device (1-Click)</span>
+                </button>
+              )}
 
-              <button
-                onClick={() => setIsInstallModalOpen(false)}
-                className="py-3 px-5 rounded-full ios-btn-glass text-stone-800 text-xs font-bold active:scale-95 transition-all"
-              >
-                <span>Close</span>
-              </button>
+              <div className="flex gap-2">
+                <a
+                  href="/AgriBot-AI-v2.0.apk"
+                  download="AgriBot-AI-v2.0.apk"
+                  className="flex-1 py-3 rounded-full ios-btn-black text-white text-xs font-bold flex items-center justify-center gap-2 shadow-md active:scale-95 transition-all text-center"
+                >
+                  <Download className="w-4 h-4 text-emerald-400" />
+                  <span>Download APK File</span>
+                </a>
+
+                <button
+                  onClick={() => setIsInstallModalOpen(false)}
+                  className="py-3 px-5 rounded-full ios-btn-glass text-stone-800 text-xs font-bold active:scale-95 transition-all"
+                >
+                  <span>Close</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
