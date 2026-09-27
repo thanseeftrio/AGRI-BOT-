@@ -41,6 +41,7 @@ import {
   Check,
   Smartphone,
   Share2,
+  KeyRound,
   Zap
 } from 'lucide-react';
 import { TRANSLATIONS } from './data/translations';
@@ -49,6 +50,7 @@ import { PrescriptionModal } from './components/PrescriptionModal';
 import { LeafDoctorModal } from './components/LeafDoctorModal';
 import { CalculatorModal } from './components/CalculatorModal';
 import { ApiService } from './services/api';
+import { getStoredGeminiKey, setStoredGeminiKey } from './services/geminiService';
 
 export function App() {
   const [currentLanguage, setLanguage] = useState(() => {
@@ -224,7 +226,9 @@ export function App() {
         query: queryText,
         language: currentLanguage,
         mode: agentMode,
-        image_name: queryImage
+        image_name: queryImage,
+        imageDataUrl: queryDataUrl,
+        history: currentMessages
       });
 
       const botReplyText = data.response_text_localized || data.response_text_en || data.text;
@@ -530,9 +534,15 @@ export function App() {
 
         {/* Controls: Language, Mode, Download APK, Install App */}
         <div className="flex items-center gap-2">
+          {/* AgriBot AI Status Badge */}
+          <div className="hidden sm:inline-flex items-center gap-1.5 py-1.5 px-3 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200/80 shadow-2xs">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>AgriBot AI Online</span>
+          </div>
+
           {/* Direct Download APK Button (Mobile & Desktop) */}
           <a
-            href="/api/download/apk"
+            href="/AgriBot-AI-v2.0.apk"
             download="AgriBot-AI-v2.0.apk"
             className="ios-btn-black py-1.5 px-3.5 text-xs font-bold gap-1.5 shadow-sm active:scale-95"
             title="Download Android APK Package (.apk)"
